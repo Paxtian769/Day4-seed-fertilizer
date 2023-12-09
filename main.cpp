@@ -13,6 +13,15 @@ int toNum(char c) {
     return c - '0';
 }
 
+double min(double first, double second) {
+    if (first < second) {
+        return first;
+    }
+    else {
+        return second;
+    }
+}
+
 void create_s_t_r_from_string(string &line, double &source, double &target, double &range) {
     int pos=0;
     // parse target val from string
@@ -38,74 +47,81 @@ void create_s_t_r_from_string(string &line, double &source, double &target, doub
 }
 
 class MapEntry {
-    private:
-        double sourceVal;
-        double targetVal;
-        double range;
+private:
+    double sourceVal;
+    double targetVal;
+    double range;
 
-    public:
-        bool isInSourceRange(double val) {
-            return (sourceVal <= val && val < sourceVal+range);
+public:
+    bool isInSourceRange(double val) {
+        return (sourceVal <= val && val < sourceVal+range);
+    }
+
+    double getMappedVal(double val) {
+        if (isInSourceRange(val)) {
+            return (val - sourceVal + targetVal);
         }
-
-        double getMappedVal(double val) {
-            if (isInSourceRange(val)) {
-                return (val - sourceVal + targetVal);
-            }
-            else {
-                return val;
-            }
+        else {
+            return val;
         }
+    }
 
-        MapEntry (string line) {
-            create_s_t_r_from_string(line, sourceVal, targetVal, range);
-        }
+    double getRangeToMax(double val) {
+        return sourceVal + range - 1 - val;
+    }
 
-        MapEntry();
+    MapEntry (string line) {
+        create_s_t_r_from_string(line, sourceVal, targetVal, range);
+    }
+
+    MapEntry();
 };
 
 
 class Map {
-    private:
-        list<MapEntry> entries;
-        string name;
+private:
+    list<MapEntry> entries;
+    string name;
+    double maxSkipRange;
+public:
+    void addEntry(string line) {
+        entries.push_back(MapEntry(line));
+    }
+    Map(string file_name) {
+        name = file_name;
+        ifstream input_file;
+        input_file.open(file_name);
+        string line;
+        if (input_file.is_open()) {
+            getline(input_file, line);
+            while (getline(input_file, line)) {
+                addEntry(line);
+            }
+        }
+        else {
+            cerr << "Error opening file " << file_name << '\n';
+        }
+        input_file.close();
+    }
 
-    public:
-        void addEntry(string line) {
-            entries.push_back(MapEntry(line));
-        }
-        Map(string file_name) {
-            name = file_name;
-            ifstream input_file;
-            input_file.open(file_name);
-            string line;
-            if (input_file.is_open()) {
-                getline(input_file, line);
-                while (getline(input_file, line)) {
-                    addEntry(line);
-                }
+    double getDestination(double source) {
+        double destination = source;
+        for (list<MapEntry>::iterator currEntry = entries.begin(); currEntry != entries.end(); currEntry++) {
+            if (currEntry->isInSourceRange(source)) {
+                maxSkipRange = currEntry->getRangeToMax(source);
+                destination = currEntry->getMappedVal(source);
+                return destination;
             }
-            else {
-                cerr << "Error opening file " << file_name << '\n';
-            }
-            input_file.close();
         }
+        return destination;
+    }
 
-        double getDestination(double source) {
-            double destination = source;
-            for (list<MapEntry>::iterator currEntry = entries.begin(); currEntry != entries.end(); currEntry++) {
-                if (currEntry->isInSourceRange(source)) {
-                    destination = currEntry->getMappedVal(source);
-                    // cout << name << " maps " << source << " to " << destination << '\n';
-                    return destination;
-                }
-            }
-            // cout << name << " doesn't contain a mapping for " << source << '\n';
-            return destination;
-        }
+    double getMaxSkipRange() {
+        return maxSkipRange;
+    }
 };
 
-//TODO refactor for part 2
+
 class SeedList {
 private:
     list<double> seeds;
@@ -118,7 +134,6 @@ public:
             pos++;
         }
 
-        //add
         double val = 0;
         for (pos; pos < line.length(); pos++) {
             if (isNum(line[pos])) {
@@ -148,6 +163,121 @@ public:
     }
 };
 
+class SeedRange {
+private:
+    double startSeed;
+    double range;
+    double currSeed;
+public:
+    SeedRange(double start, double r) {
+        startSeed = start;
+        currSeed = 0;
+        range = r;
+    }
+
+    double getCurrentSeed() {
+        return startSeed+currSeed;
+    }
+
+    double getNextSeed() {
+        currSeed++;
+        return startSeed+currSeed;
+    }
+
+    bool atLastSeed() {
+        return currSeed >= range;
+    }
+
+    double getMaxSkipRange() {
+        return range - 1 - currSeed;
+    }
+
+    bool isInRange(double seed) {
+        return (startSeed <= seed && seed <= startSeed+range);
+    }
+
+    void updateCurrent(double newCurrent) {
+        currSeed += newCurrent;
+    }
+};
+
+class SeedRanges {
+private:
+    list<SeedRange> seedRanges;
+    list<SeedRange>::iterator currRange;
+    double seedsTested;
+public:
+    SeedRanges(string line) {
+        int pos = 0;
+        while (pos < line.length() && !isNum(line[pos])) {
+            pos++;
+        }
+        double start;
+        double range;
+        while (pos < line.length()) {
+            // get start value`
+            start = 0;
+            range = 0;
+            while (pos < line.length() && isNum(line[pos])) {
+                start = (start * 10) + toNum(line[pos]);
+                pos++;
+            }
+            pos++; // move past space
+            // get range value
+            while (pos < line.length() && isNum(line[pos])) {
+                range = (range * 10) + toNum(line[pos]);
+                pos++;
+            }
+            seedRanges.push_back(SeedRange(start, range));
+            pos++;
+        }
+        currRange = seedRanges.begin();
+    }
+
+    bool seedsRemain() {
+        bool remain = true;
+        list<SeedRange>::iterator nextRange;
+        if (currRange != seedRanges.end()) {
+            if (currRange->atLastSeed()) {
+                nextRange = currRange;
+                nextRange++;
+                if (nextRange != seedRanges.end()) {
+                    remain = true;
+                }
+                else {
+                    remain = false;
+                }
+            }
+            else {
+                remain = true;
+            }
+        }
+        return remain;
+    }
+
+    double getCurrentSeed() {
+        return currRange->getCurrentSeed();
+    }
+
+    double getNextSeed() {
+        if (currRange->atLastSeed()) {
+            currRange++;
+            return currRange->getCurrentSeed();
+        }
+        else {
+            return currRange->getNextSeed();
+        }
+    }
+
+    double getMaxSkipRange() {
+        return currRange->getMaxSkipRange();
+    }
+
+    void updateCurrent(double newCurrent) {
+        currRange->updateCurrent(newCurrent);
+    }
+};
+
 
 int main(int argc, char **argv) {
     Map seedToSoilMap("seed-to-soil-map.txt");
@@ -166,7 +296,7 @@ int main(int argc, char **argv) {
     SeedList seeds(seedLine);
 
     double seedNum = seeds.getCurrentSeed();
-    double minLocation;
+    double minLocationPart1;
 
     double soil = seedToSoilMap.getDestination(seedNum);
     double fertilizer = soilToFertilizerMap.getDestination(soil);
@@ -175,9 +305,9 @@ int main(int argc, char **argv) {
     double temp = lightToTempMap.getDestination(light);
     double humidity = tempToHumidityMap.getDestination(temp);
     double location = humidityToLocationMap.getDestination(humidity);
-    minLocation = location;
+    minLocationPart1 = location;
 
-
+    // Part 1
     seedNum = seeds.getNextSeed();
     while (seeds.seedsRemain()) {
         soil = seedToSoilMap.getDestination(seedNum);
@@ -187,16 +317,71 @@ int main(int argc, char **argv) {
         temp = lightToTempMap.getDestination(light);
         humidity = tempToHumidityMap.getDestination(temp);
         location = humidityToLocationMap.getDestination(humidity);
-        if (location < minLocation) {
-            minLocation = location;
-        }
-        if (location < 0) {
-            cout << "wtf for seed " << seedNum << "?\n";
+        if (location < minLocationPart1) {
+            minLocationPart1 = location;
         }
         seedNum = seeds.getNextSeed();
     }
 
-    cout << "Minimum location = " << to_string(minLocation) << '\n';
+    // Part 2
+    double minLocationPart2 = minLocationPart1;
+    SeedRanges seedRanges(seedLine);
+
+    double maxSkipRange;
+
+    seedNum = seedRanges.getCurrentSeed();
+    maxSkipRange = seedRanges.getMaxSkipRange();
+    soil = seedToSoilMap.getDestination(seedNum);
+    maxSkipRange = min(maxSkipRange, seedToSoilMap.getMaxSkipRange());
+    fertilizer = soilToFertilizerMap.getDestination(soil);
+    maxSkipRange = min(maxSkipRange, soilToFertilizerMap.getMaxSkipRange());
+    water = fertilizerToWaterMap.getDestination(fertilizer);
+    maxSkipRange = min(maxSkipRange, fertilizerToWaterMap.getMaxSkipRange());
+    light = waterToLightMap.getDestination(water);
+    maxSkipRange = min(maxSkipRange, waterToLightMap.getMaxSkipRange());
+    temp = lightToTempMap.getDestination(light);
+    maxSkipRange = min(maxSkipRange, lightToTempMap.getMaxSkipRange());
+    humidity = tempToHumidityMap.getDestination(temp);
+    maxSkipRange = min(maxSkipRange, tempToHumidityMap.getMaxSkipRange());
+    location = humidityToLocationMap.getDestination(humidity);
+    maxSkipRange = min(maxSkipRange, humidityToLocationMap.getMaxSkipRange());
+    if (location < minLocationPart2) {
+        minLocationPart2 = location;
+    }
+    if (maxSkipRange > 0) {
+        seedRanges.updateCurrent(maxSkipRange);
+    }
+
+
+    while (seedRanges.seedsRemain()) {
+        seedNum = seedRanges.getNextSeed();
+        maxSkipRange = seedRanges.getMaxSkipRange();
+        soil = seedToSoilMap.getDestination(seedNum);
+        maxSkipRange = min(maxSkipRange, seedToSoilMap.getMaxSkipRange());
+        fertilizer = soilToFertilizerMap.getDestination(soil);
+        maxSkipRange = min(maxSkipRange, soilToFertilizerMap.getMaxSkipRange());
+        water = fertilizerToWaterMap.getDestination(fertilizer);
+        maxSkipRange = min(maxSkipRange, fertilizerToWaterMap.getMaxSkipRange());
+        light = waterToLightMap.getDestination(water);
+        maxSkipRange = min(maxSkipRange, waterToLightMap.getMaxSkipRange());
+        temp = lightToTempMap.getDestination(light);
+        maxSkipRange = min(maxSkipRange, lightToTempMap.getMaxSkipRange());
+        humidity = tempToHumidityMap.getDestination(temp);
+        maxSkipRange = min(maxSkipRange, tempToHumidityMap.getMaxSkipRange());
+        location = humidityToLocationMap.getDestination(humidity);
+        maxSkipRange = min(maxSkipRange, humidityToLocationMap.getMaxSkipRange());
+        if (location < minLocationPart2) {
+            minLocationPart2 = location;
+        }
+        if (maxSkipRange > 0) {
+            seedRanges.updateCurrent(maxSkipRange);
+        }
+    }
+
+
+    cout << "Minimum location, part 1 = " << to_string(minLocationPart1) << '\n';
+
+    cout << "Minimum location, part 2 = " << to_string(minLocationPart2) << '\n';
 
     return 0;
 }
