@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -rdynamic "CMakeFiles/day4-seed-fertilizer.dir/main.cpp.o" -o day4-seed-fertilizer 

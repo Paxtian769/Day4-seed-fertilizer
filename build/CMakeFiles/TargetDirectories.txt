@@ -1,0 +1,7 @@
+/home/brian/projects/AOC23/Day4-seed-fertilizer/build/CMakeFiles/day4-seed-fertilizer.dir
+/home/brian/projects/AOC23/Day4-seed-fertilizer/build/CMakeFiles/edit_cache.dir
+/home/brian/projects/AOC23/Day4-seed-fertilizer/build/CMakeFiles/rebuild_cache.dir
+/home/brian/projects/AOC23/Day4-seed-fertilizer/build/CMakeFiles/list_install_components.dir
+/home/brian/projects/AOC23/Day4-seed-fertilizer/build/CMakeFiles/install.dir
+/home/brian/projects/AOC23/Day4-seed-fertilizer/build/CMakeFiles/install/local.dir
+/home/brian/projects/AOC23/Day4-seed-fertilizer/build/CMakeFiles/install/strip.dir
